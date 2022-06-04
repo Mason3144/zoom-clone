@@ -1,7 +1,7 @@
 import http from "http";
-import SocketIO from "socket.io";
+import { Server } from "socket.io";
 import express from "express"
-
+import { instrument } from "@socket.io/admin-ui";
 
 const app = express();
 
@@ -28,7 +28,15 @@ const countRoom = (roomName) => {
 
 
 const httpServer = http.createServer(app)
-const wsServer = SocketIO(httpServer);
+const wsServer = new Server(httpServer, {
+    cors: {
+        origin: ["https://admin.socket.io"],
+        credentials: true
+    }
+});
+instrument(wsServer, {
+    auth: false
+});
 
 wsServer.on("connection", (socket) => {
     socket["nickname"] = "Anonymouse"
