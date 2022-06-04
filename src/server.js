@@ -1,6 +1,7 @@
 import http from "http";
-import WebSocket from "ws";
+import SocketIO from "socket.io";
 import express from "express"
+
 
 const app = express();
 
@@ -10,42 +11,54 @@ app.use("/public", express.static(__dirname + "/public"))
 app.get("/", (req, res) => res.render("home"))
 app.get("/*", (req, res) => res.redirect("/"));
 
-
-const handleListen = () => console.log(`Listening on http://localhost:3000`)
-
-const server = http.createServer(app)
-const wss = new WebSocket.Server({ server })
-
-const sockets = [];
-
-
-
-wss.on("connection", (socket) => {
-    sockets.push(socket);
-    socket["nickname"] = "Anonymous";
-    console.log("connected")
-    socket.on("close", () => console.log("disconnected"))
-    socket.on("message", msg => {
-        const message = JSON.parse(msg)
-        // if (message.type === "new_message") {
-        //     sockets.forEach(aSocket => aSocket.send(message.payload))
-        // } else if (message.type === "nickname") {
-        //     console.log(message.payload)
-        // } object를 if문이 아닌 switch로 사용
-        switch (message.type) {
-            case "new_message":
-                sockets.forEach((aSocket) => aSocket.send(`${socket.nickname}: ${message.payload}`))
-                break                   //return과 같은역활,안해줄경우 다음case까지도 계속 진행됨
-            case "nickname":
-                socket["nickname"] = message.payload   //object에 요소 추가하는 방식, 
-                break                                   //socket.nickname = massage.payload
+const publicRooms = () => {
+    const { sids, rooms } = wsServer.sockets.adapter;
+    const publicRooms = [];
+    rooms.forEach((_, key) => {
+        if (sids.get(key) === undefined) {
+            publicRooms.push(key)
         }
     })
+    return publicRooms;
+}
 
+const countRoom = (roomName) => {
+    return wsServer.sockets.adapter.rooms.get(roomName)?.size;
+}
+
+
+const httpServer = http.createServer(app)
+const wsServer = SocketIO(httpServer);
+
+wsServer.on("connection", (socket) => {
+    socket["nickname"] = "Anonymouse"
+
+    socket.onAny((event) => {
+        console.log(`Socket Event: ${event}`)
+    })
+
+    socket.on("enter_room", (roomName, done) => {
+        socket.join(roomName)
+        done()
+        wsServer.to(roomName).emit("welcome", socket.nickname, countRoom(roomName));
+        wsServer.sockets.emit("change_room", publicRooms())
+    })
+    socket.on("disconnecting", () => {
+        socket.rooms.forEach((room) => socket.to(room).emit("bye", socket.nickname, countRoom(room) - 1))
+    })
+    socket.on("disconnect", () => {
+        wsServer.sockets.emit("change_room", publicRooms())
+    })
+    socket.on("new_message", (msg, room, done) => {
+        socket.to(room).emit("new_message", `${socket.nickname}: ${msg}`);
+        done();
+    })
+    socket.on("nickname", (nickname) => (socket["nickname"] = nickname))
 })
 
 
 
-server.listen(3000, handleListen);
+const handleListen = () => console.log(`Listening on http://localhost:3000`)
+httpServer.listen(3000, handleListen);
 
 
