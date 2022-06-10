@@ -121,14 +121,36 @@ const handleWelcomeSubmit = async (event) => {
 
 welcomeForm.addEventListener("submit", handleWelcomeSubmit)
 
+//Data channel
+const messageForm = document.getElementById("messageForm")
+
+
+let messages = []
+const handleMessage = (event) => {
+    const text = document.getElementById("text")
+    const ul = document.getElementById("ul")
+    const li = document.createElement("li")
+    event.preventDefault()
+    if (event.data) {
+        li.innerText = `Candidate: ${event.data}`
+        ul.appendChild(li)
+        return
+    }
+    if (text.value === "") {
+        return
+    }
+    li.innerText = `You: ${text.value}`
+    ul.appendChild(li)
+    dataChannel.send(text.value)
+    text.value = ""
+}
+messageForm.addEventListener("submit", handleMessage)
+
 //socket
 
 socket.on("welcome", async () => {
     dataChannel = myPeerConnection.createDataChannel("chat");
-    dataChannel.addEventListener("message", console.log)
-
-
-
+    dataChannel.addEventListener("message", handleMessage)
     const offer = await myPeerConnection.createOffer();
     myPeerConnection.setLocalDescription(offer)
     socket.emit("offer", offer, roomName);
@@ -137,11 +159,8 @@ socket.on("welcome", async () => {
 socket.on("offer", async (offer) => {
     myPeerConnection.addEventListener("datachannel", (event) => {
         dataChannel = event.channel;
-        dataChannel.addEventListener("message", console.log)
+        dataChannel.addEventListener("message", handleMessage)
     })
-
-
-
     myPeerConnection.setRemoteDescription(offer)
     const answer = await myPeerConnection.createAnswer()
     myPeerConnection.setLocalDescription(answer)
@@ -157,9 +176,6 @@ socket.on("ice", (ice) => {
 })
 
 //RTC code
-
-
-
 
 const makeConnection = () => {
     myPeerConnection = new RTCPeerConnection({
