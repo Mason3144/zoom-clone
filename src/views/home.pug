@@ -12,11 +12,17 @@ html(lang="en")
             h1 Joom
 
         main
-            div#myStream
-                video#myFace(autoplay, playsinline, width="400", height="400")
-                button#mute Mute
-                button#camera Camera off
-                select#cameras
-                    option(value="device") Face Camera
+            div#welcome
+                form
+                    input(placeholder="Room name", reqiored, type="text")
+                    button Enter room
+            div#call
+                div#myStream
+                    video#myFace(autoplay, playsinline, width="400", height="400")
+                    button#mute Mute
+                    button#camera Camera off
+                    select#cameras
+                        option(value="device") Face Camera
+                video#peerStream(autoplay, playsinline, width="400", height="400")
         script(src="/socket.io/socket.io.js")
         script(src="/public/js/app.js")
